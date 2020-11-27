@@ -6,6 +6,7 @@ import javax.security.auth.login.LoginException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.emote.EmoteAddedEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -163,6 +164,11 @@ public class Bot {
         @Override
         public void onGuildMemberJoin(GuildMemberJoinEvent evt) {
             // TODO: process member joining
+        }
+
+        @Override
+        public void onReady(ReadyEvent event) {
+            System.out.println("Logged in as: " + jda.getSelfUser());
         }
     }
 }
