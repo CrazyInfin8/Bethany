@@ -2,6 +2,7 @@ package com.crazyinfin8.bethany;
 
 import java.io.IOException;
 import javax.security.auth.login.LoginException;
+import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
@@ -12,7 +13,13 @@ import net.dv8tion.jda.api.entities.Message;
  */
 public class Main {
     public static void main(String[] args) throws LoginException, IOException {
-        Bot bot = new Bot(new Config("<INSERT_TOKEN_HERE>"));
+        Dotenv dotenv = Dotenv.load();
+        String token = dotenv.get("TOKEN");
+        if(token == null) {
+            System.out.println("No token specified in \".env\" file.");
+            return;
+        }
+        Bot bot = new Bot(new Config(token));
         bot.addCommand("ping", new Ping());
         bot.addCommand("poll", new Poll());
     }
