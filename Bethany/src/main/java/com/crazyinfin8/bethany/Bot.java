@@ -7,7 +7,6 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.ReadyEvent;
-import net.dv8tion.jda.api.events.emote.EmoteAddedEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -157,13 +156,9 @@ public class Bot {
         }
 
         @Override
-        public void onEmoteAdded(EmoteAddedEvent evt) {
-            // TODO: process emotes
-        }
-
-        @Override
         public void onGuildMemberJoin(GuildMemberJoinEvent evt) {
-            // TODO: process member joining
+            // TODO: Eventually, maybe this can be configured using .env but for now, it will be hard coded.
+            jda.getTextChannelById("764251823514976327").sendMessage("Welcome user " + evt.getUser().getAsTag());
         }
 
         @Override
