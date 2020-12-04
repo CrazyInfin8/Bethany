@@ -1,20 +1,27 @@
 package com.crazyinfin8.bethany;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-
 import javax.security.auth.login.LoginException;
+import org.hjson.JsonObject;
+import org.hjson.JsonValue;
+import org.hjson.ParseException;
 import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 
 /**
  *
  * @author CrazyInfin8
  */
 public class Main {
+    static final int COLOR = 0xABCDEF;
+
     public static void main(String[] args) throws LoginException, IOException {
         Dotenv dotenv = Dotenv.load();
         String token = dotenv.get("TOKEN");
@@ -25,6 +32,45 @@ public class Main {
         Bot bot = new Bot(new Config(token));
         bot.addCommand("ping", new Ping());
         bot.addCommand("poll", new Poll());
+        bot.addCommand("raffle", new Raffle());
+    }
+}
+
+class Task extends TimerTask {
+    Runnable fn;
+
+    public Task(Runnable fn) {
+        this.fn = fn;
+    }
+
+    public void run() {
+        fn.run();
+    }
+}
+
+class StringTools {
+    public static String matchLength(String text, int length) {
+        if (text.length() > length) {
+            return text.substring(0, length - 3) + "...";
+        } else {
+            return StringTools.lpad(text, ' ', length);
+        }
+    }
+
+    public static String lpad(String text, char pad, int length) {
+        StringBuilder sb = new StringBuilder(length);
+        sb.append(text);
+        length -= text.length();
+        if (length > 0)
+            sb.append(StringTools.times(pad, length));
+        return sb.toString();
+    }
+
+    public static String times(char c, int length) {
+        StringBuilder sb = new StringBuilder(length);
+        while (--length >= 0)
+            sb.append(c);
+        return sb.toString();
     }
 }
 
@@ -49,47 +95,120 @@ class Poll implements Command {
             "\uD83C\uDDFC", "\uD83C\uDDFD", "\uD83C\uDDFE", "\uD83C\uDDFF", };
 
     public void run(Bot bot, JDA jda, Message msg, String... params) {
-        EmbedBuilder emb = new EmbedBuilder();
-        emb.setColor(0xFF0000);
-        emb.setAuthor(msg.getAuthor().getAsTag(), null, msg.getAuthor().getAvatarUrl());
+        EmbedBuilder emb = new EmbedBuilder().setColor(Main.COLOR).setAuthor(msg.getAuthor().getAsTag(), null,
+                msg.getAuthor().getAvatarUrl());
         if (params.length < 3) {
             msg.getChannel()
-                    .sendMessage("\"Poll\" command requires at least 3 parameters! (title and at least 2 options)")
+                    .sendMessage(
+                            "\"Poll\" command requires at least 3 parameters! (title/options and at least 2 options)")
                     .queue();
             return;
         }
         int count = 1;
-        emb.appendDescription("**New poll:**\n" + params[0] + "\n");
+        String tempTitle = params[0];
+        long time = 5000;
+        {
+            try {
+                JsonObject obj;
+                obj = JsonValue.readHjson(params[0]).asObject();
+                tempTitle = obj.getString("title", params[0]);
+                time = Math.abs(obj.getLong("time", 5000));
+            } catch (ParseException e) {
+                System.out.println("Parameter is not hjson");
+            }
+        }
+        String title = tempTitle;
+        emb.appendDescription("**New poll:**\n" + title + "\n");
+        int tempMaxOptLen = 0;
         for (; count < params.length && count < EMOTES.length; ++count) {
             emb.appendDescription(EMOTES[count - 1] + " ` " + params[count] + " `\n");
+            tempMaxOptLen = params[count].length() > tempMaxOptLen ? params[count].length() : tempMaxOptLen;
         }
+        int maxOptLen = tempMaxOptLen > 20 ? 20 : tempMaxOptLen;
+        emb.setFooter("React with the according letter to vote");
         final int optCount = count - 1;
         Message newMsg = msg.getChannel().sendMessage(emb.build()).complete();
         for (int i = 0; i < optCount; ++i) {
             newMsg.addReaction(EMOTE_CODES[i]).complete();
         }
         new Timer().schedule(new Task(() -> {
-            EmbedBuilder results = new EmbedBuilder();
-            results.appendDescription("**Pole results:**\n");
+            EmbedBuilder results = new EmbedBuilder().setColor(Main.COLOR)
+                    .setAuthor(msg.getAuthor().getAsTag(), null, msg.getAuthor().getAvatarUrl())
+                    .appendDescription("**Pole results:**\n```markdown\n# " + title + "\n");
+            double tally[] = new double[optCount];
+            double sum = 0;
             for (int i = 0; i < optCount; i++) {
-                // TODO: Make this output look a bit more pretty!
-                results.appendDescription(params[i + 1] + ": `"
-                        + (newMsg.retrieveReactionUsers(EMOTE_CODES[i]).complete().size() - 1) + "`\n");
+                tally[i] = newMsg.retrieveReactionUsers(EMOTE_CODES[i]).complete().size() - 1;
+                sum += tally[i];
             }
+            if (sum == 0)
+                sum = 1;
+            for (int i = 0; i < tally.length; i++) {
+
+                int tallyCount = (int) (tally[i] / sum * 20);
+
+                System.out.println(tally[i] / sum);
+                results.appendDescription(String.format("[%s][%s%s]%3.0f%% %.0f\n",
+                        StringTools.matchLength(params[i + 1], maxOptLen), StringTools.times('#', tallyCount),
+                        StringTools.times(' ', 20 - tallyCount), tally[i] / sum * 100, tally[i]));
+            }
+            results.appendDescription("```");
             newMsg.clearReactions().complete();
             newMsg.editMessage(results.build()).complete();
-        }), 5000);
+        }), time);
     }
 }
 
-class Task extends TimerTask {
-    Runnable fn;
-
-    public Task(Runnable fn) {
-        this.fn = fn;
-    }
-
-    public void run() {
-        fn.run();
+class Raffle implements Command {
+    public void run(Bot bot, JDA jda, Message msg, String... params) {
+        if (params.length < 1) {
+            msg.getChannel().sendMessage("\"Raffle\" command requires 1 parameters! (title/options)").complete();
+            return;
+        }
+        long time = 5000;
+        String tempTitle = params[0];
+        int count = 1;
+        try {
+            JsonObject obj;
+            obj = JsonValue.readHjson(params[0]).asObject();
+            tempTitle = obj.getString("title", params[0]);
+            time = Math.abs(obj.getLong("time", 5000));
+            count = Math.abs(obj.getInt("count", 1));
+        } catch (Exception e) {
+            System.out.println("Parameter is not hjson");
+        }
+        if (count < 1) {
+            msg.getChannel().sendMessage("\"count\" cannot be less than 1").complete();
+        }
+        String title = tempTitle;
+        EmbedBuilder emb = new EmbedBuilder().setColor(Main.COLOR)
+                .setAuthor(msg.getAuthor().getAsTag(), null, msg.getAuthor().getAvatarUrl())
+                .appendDescription("**New raffle:**\n```markdown\n# " + title + "```")
+                .setFooter("react with \u2705 to participate");
+        Message newMsg = msg.getChannel().sendMessage(emb.build()).complete();
+        newMsg.addReaction("\u2705").complete();
+        int winners = count;
+        new Timer().schedule(new Task(() -> {
+            EmbedBuilder results = new EmbedBuilder().setColor(Main.COLOR)
+                    .setAuthor(msg.getAuthor().getAsTag(), null, msg.getAuthor().getAvatarUrl())
+                    .appendDescription("**Raffle results:**```markdown\n# " + title + "```");
+            List<User> tally = newMsg.retrieveReactionUsers("\u2705").complete();
+            newMsg.clearReactions().complete();
+            tally.removeIf((user) -> {
+                return user.getId().equals(jda.getSelfUser().getId());
+            });
+            for (int i = 0; i < winners; i++) {
+                if (tally.isEmpty()) {
+                    results.setFooter("Thats all the people!!");
+                    break;
+                }
+                int j = (int) (Math.random() * tally.size());
+                User user = tally.remove(j);
+                results.appendDescription("**" + (i + 1) + ":** " + user.getAsMention() + "\n");
+            }
+            System.out.println(tally.size());
+            System.out.println(Arrays.toString(tally.toArray()));
+            newMsg.editMessage(results.build()).complete();
+        }), time);
     }
 }
