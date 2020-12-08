@@ -22,7 +22,6 @@ public class Bot {
     String prefix;
     String admins[];
     HashMap<String, Command> commandList;
-    HashMap<String, String> trackEmoji;
     Listener listener;
 
     public Bot(Config cfg) throws LoginException {
@@ -143,7 +142,11 @@ public class Bot {
                             }
                             String arr[] = new String[params.size()];
                             params.toArray(arr);
-                            cmd.run(bot, jda, msg, arr);
+                            try {
+                                cmd.run(bot, jda, msg, arr);
+                            } catch (Exception e) {
+                                System.out.println(e.getStackTrace());
+                            }
                         } catch (Exception e) {
                             System.err.print(e);
                         }

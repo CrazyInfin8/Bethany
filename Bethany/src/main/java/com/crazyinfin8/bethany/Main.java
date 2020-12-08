@@ -1,6 +1,10 @@
 package com.crazyinfin8.bethany;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Timer;
@@ -33,6 +37,9 @@ public class Main {
         bot.addCommand("ping", new Ping());
         bot.addCommand("poll", new Poll());
         bot.addCommand("raffle", new Raffle());
+        bot.addCommand("dice", new Dice());
+        bot.addCommand("coin", new Coin());
+        bot.addCommand("wttr", new WTTR());
     }
 }
 
@@ -63,6 +70,15 @@ class StringTools {
         length -= text.length();
         if (length > 0)
             sb.append(StringTools.times(pad, length));
+        return sb.toString();
+    }
+
+    public static String rpad(String text, char pad, int length) {
+        StringBuilder sb = new StringBuilder(length);
+        length -= text.length();
+        if (length > 0)
+            sb.append(StringTools.times(pad, length));
+        sb.append(text);
         return sb.toString();
     }
 
@@ -210,5 +226,100 @@ class Raffle implements Command {
             System.out.println(Arrays.toString(tally.toArray()));
             newMsg.editMessage(results.build()).complete();
         }), time);
+    }
+}
+
+class Dice implements Command {
+    public void run(Bot bot, JDA jda, Message msg, String... params) {
+        int dice = 1, sides = 6;
+        try {
+            if (params.length > 0) {
+                sides = Integer.parseInt(params[0]);
+                if (params.length > 1) {
+                    dice = Integer.parseInt(params[1]);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Invalid number of dice/sides");
+        }
+        int diceLen = 1 + (int) Math.log10((double) dice);
+        int sidesLen = 1 + (int) Math.log10((double) sides);
+        EmbedBuilder emb = new EmbedBuilder().setColor(Main.COLOR)
+                .setAuthor(msg.getAuthor().getAsTag(), null, msg.getAuthor().getAvatarUrl())
+                .setTitle("Rolling a " + sides + "-sided dice " + dice + " times!").appendDescription("```markdown\n");
+        int sum = 0;
+        for (int i = 0; i < dice; i++) {
+            int die = (int) (Math.random() * sides) + 1;
+            sum += die;
+            emb.appendDescription("[Dice " + StringTools.rpad(String.valueOf(i + 1), ' ', diceLen) + "]( "
+                    + StringTools.rpad(String.valueOf(die), ' ', sidesLen) + " )\n");
+        }
+        emb.appendDescription("```").setFooter("Total: " + sum);
+        msg.getChannel().sendMessage(emb.build()).queue();
+    }
+}
+
+class Coin implements Command {
+    public void run(Bot bot, JDA jda, Message msg, String... params) {
+        int coins = 1, heads = 0, tails = 0;
+        try {
+            if (params.length > 0) {
+                coins = Integer.parseInt(params[0]);
+            }
+        } catch (Exception e) {
+            System.out.println("Invalid number of dice/sides");
+        }
+        int countLen = 1 + (int) Math.log10((double) coins);
+        EmbedBuilder emb = new EmbedBuilder().setColor(Main.COLOR)
+                .setAuthor(msg.getAuthor().getAsTag(), null, msg.getAuthor().getAvatarUrl())
+                .setTitle("Flipping a coin " + coins + " times!").appendDescription("```llvm\n");
+        for (int i = 0; i < coins; i++) {
+            String side;
+            if (Math.random() > 0.5) {
+                side = "@Heads";
+                ++heads;
+            } else {
+                side = "%Tails";
+                ++tails;
+            }
+
+            // String.format("[Coin %d]:%s", args)
+            emb.appendDescription(
+                    "[Coin " + StringTools.rpad(String.valueOf(i + 1), ' ', countLen) + "]:" + side + " \n");
+        }
+        emb.appendDescription("```").setFooter("Total heads: " + heads + "; Total tails: " + tails);
+        msg.getChannel().sendMessage(emb.build()).queue();
+    }
+}
+
+class WTTR implements Command {
+    public void run(Bot bot, JDA jda, Message msg, String... params) {
+        URL url;
+        if (params.length < 1) {
+            msg.getChannel().sendMessage("\"WTTR\" command requires 1 parameters! (City)").complete();
+            return;
+        }
+        try {
+            url = new URL("http://wttr.in/" + params[0] + "?T0A");
+        } catch (MalformedURLException e) {
+            System.out.println(e);
+            return;
+        }
+        try {
+            URLConnection con = url.openConnection();
+            con.setRequestProperty("Content-Type", "text/plain");
+            System.out.print(con.getRequestProperty("User-Agent"));
+            con.setRequestProperty("User-Agent", "Mozilla/5.0");
+            InputStream in = con.getInputStream();
+            con.connect();
+            String text = new String(in.readAllBytes());
+            EmbedBuilder emb = new EmbedBuilder().setColor(Main.COLOR)
+                    .setAuthor(msg.getAuthor().getAsTag(), null, msg.getAuthor().getAvatarUrl())
+                    .appendDescription("```" + text + "```");
+            msg.getChannel().sendMessage(emb.build()).queue();
+        } catch (IOException e) {
+            System.out.println(e);
+            return;
+        }
     }
 }
