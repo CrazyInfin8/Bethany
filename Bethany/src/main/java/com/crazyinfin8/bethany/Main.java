@@ -40,6 +40,8 @@ public class Main {
         bot.addCommand("dice", new Dice());
         bot.addCommand("coin", new Coin());
         bot.addCommand("wttr", new WTTR());
+        bot.addCommand("profile", new Profile());
+        bot.addCommand("help", new Help());
     }
 }
 
@@ -321,5 +323,46 @@ class WTTR implements Command {
             System.out.println(e);
             return;
         }
+    }
+}
+
+class Profile implements Command {
+    public void run(Bot bot, JDA jda, Message msg, String... params) {
+        List<User> mem = msg.getMentionedUsers();
+        EmbedBuilder emb = new EmbedBuilder().setColor(Main.COLOR).setAuthor(msg.getAuthor().getAsTag(), null,
+                msg.getAuthor().getAvatarUrl());
+        if (mem.size() > 0) {
+            emb.setImage(mem.get(0).getEffectiveAvatarUrl());
+        } else {
+            emb.setImage(msg.getAuthor().getEffectiveAvatarUrl());
+        }
+        msg.getChannel().sendMessage(emb.build()).queue();
+    }
+}
+
+class Help implements Command {
+    public void run(Bot bot, JDA jda, Message msg, String... params) {
+        EmbedBuilder emb = new EmbedBuilder().setColor(Main.COLOR).setAuthor(msg.getAuthor().getAsTag(), null,
+        /*
+        bot.addCommand("ping", new Ping());
+        bot.addCommand("poll", new Poll());
+        bot.addCommand("raffle", new Raffle());
+        bot.addCommand("dice", new Dice());
+        bot.addCommand("coin", new Coin());
+        bot.addCommand("wttr", new WTTR());
+        bot.addCommand("profile", new Profile());
+         */
+                msg.getAuthor().getAvatarUrl()).setTitle(jda.getSelfUser().getName() + " Commands Available:").appendDescription(
+                    "```markdown\n[" +
+                    bot.prefix + "ping]( Command to check that the bot is online )\n[" +
+                    bot.prefix + "poll]( creates a poll that will automatically be tallied )\n[" +
+                    bot.prefix + "raffle]( creates a raffle that will automatically choose winners )\n[" +
+                    bot.prefix + "dice]( rolls some dies )\n[" +
+                    bot.prefix + "coin]( flips some coins )\n[" +
+                    bot.prefix + "wttr]( prints the weather )\n[" +
+                    bot.prefix + "profile]( gets a users profile image )\n[" +
+                    bot.prefix + "help]( prints this help screen! )\n```"
+                );
+                msg.getChannel().sendMessage(emb.build()).queue();
     }
 }

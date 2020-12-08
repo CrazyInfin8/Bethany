@@ -29,7 +29,7 @@ public class Bot {
         prefix = cfg.prefix;
         admins = cfg.admins.clone();
         commandList = new HashMap<String, Command>();
-        listener = new Listener(bot);
+        listener = new Listener(this);
         bot.addEventListener(listener);
     }
 
@@ -48,8 +48,9 @@ public class Bot {
         JDA jda;
         Bot bot;
 
-        Listener(JDA bot) {
-            this.jda = bot;
+        Listener(Bot bot) {
+            this.bot = bot;
+            this.jda = bot.bot;
         }
 
         @Override
@@ -145,7 +146,7 @@ public class Bot {
                             try {
                                 cmd.run(bot, jda, msg, arr);
                             } catch (Exception e) {
-                                System.out.println(e.getStackTrace());
+                                System.out.println(e);
                             }
                         } catch (Exception e) {
                             System.err.print(e);
@@ -161,7 +162,11 @@ public class Bot {
         @Override
         public void onGuildMemberJoin(GuildMemberJoinEvent evt) {
             // TODO: Eventually, maybe this can be configured using .env but for now, it will be hard coded.
-            jda.getTextChannelById("764251823514976327").sendMessage("Welcome user " + evt.getUser().getAsTag());
+            try {
+                jda.getTextChannelById("785690750641504320").sendMessage("Welcome user " + evt.getUser().getAsTag()).queue();
+            } catch(Exception e) {
+                System.out.println(e);
+            }
         }
 
         @Override
