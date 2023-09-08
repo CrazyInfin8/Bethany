@@ -1,3 +1,4 @@
+> Bethany is not maintained. There are currently security issues with it's hjson dependancy, however this project was simply a class project and served its purpose.
 # Bethany
 A Java Discord bot for a school project
 
